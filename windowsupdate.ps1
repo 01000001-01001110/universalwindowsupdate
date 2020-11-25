@@ -151,11 +151,6 @@ function getUpdates {
                 #Rebuild Updates
                 rebuildUpdates
 
-                #run system checks
-                sfc /scannow 
-                DISM.exe /Online /Cleanup-image /scanhealth 
-                DISM.exe /Online /Cleanup-image /Restorehealth
-
                 # Install Windows Update
                 Install-PackageProvider NuGet -Force
                 Import-PackageProvider NuGet -Force
@@ -175,3 +170,9 @@ function getUpdates {
 }
 
 getUpdates
+
+#run system checks
+sfc /scannow 
+DISM.exe /Online /Cleanup-image /scanhealth 
+DISM.exe /Online /Cleanup-image /Restorehealth
+
