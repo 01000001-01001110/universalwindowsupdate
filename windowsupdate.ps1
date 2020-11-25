@@ -8,6 +8,45 @@ PSWindowsUpdate module comes from the PSGallery and needs to be trusted: https:/
 
 #>
 
+function sysScan {
+sfc /scannow 
+DISM.exe /Online /Cleanup-image /scanhealth 
+DISM.exe /Online /Cleanup-image /Restorehealth
+}
+
+
+function disableWSUS {
+# Pulled location and registry key information from https://www.windowscentral.com/how-stop-updates-installing-automatically-windows-10#disable_automatic_windows_update_regedit
+# By: Alan Newingham
+# Date: 4/9/2020
+# Purpose of this script is to nuke the appropriate registry keys in order to set windows to auto update in response to mass-remote COVID response.
+
+
+#Adding this as customers cannot do this themselves. When the script runs it will disable the "running scripts is not allowed in this environment."
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Force
+
+$username = "USERNAME"
+#encrypted password
+$password = ""
+#create the credentials object
+$cred = New-Object System.Management.Automation.PSCredential -ArgumentList @($username,(ConvertTo-SecureString -String $password -AsPlainText -Force))
+
+ Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name "WUStatusServer" -Credential $cred
+ Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name "WUServer"-Credential $cred
+
+
+ Read-Host "DOMAIN\USERNAME" -AsSecureString | ConvertFrom-SecureString | Out-File C:\SecureData\SecureString.txt
+
+$SPAdmin = "DOMAIN\USERNAME" 
+$Password = Get-Content C:\Temp\securestring.txt | convertto-securestring 
+$Credential = new-object -typename System.Management.Automation.PSCredential -argumentlist $SPAdmin, $Password 
+
+ Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name "WUStatusServer" -Credential $Credential
+ Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name "WUServer" -Credential $Credential
+}
+
+
+
 function regServer32 {
 	<#
 	    .SYNOPSIS
@@ -147,8 +186,10 @@ function getUpdates {
 
     process {
             try {	
-                
-                #Rebuild Updates
+                #disable WSUS
+                disableWSUS
+		
+                #rebuild Updates
                 rebuildUpdates
 
                 # Install Windows Update
@@ -163,6 +204,8 @@ function getUpdates {
                 Add-WUServiceManager -ServiceID 7971f918-a847-4430-9279-4a52d1efe18d -Confirm:$false
                 Get-WUInstall –MicrosoftUpdate –AcceptAll –AutoReboot
 
+		#run System Scan
+		sysScan
             } catch {
                     Write-Error $_.Exception.Message $false
 		}
@@ -170,9 +213,4 @@ function getUpdates {
 }
 
 getUpdates
-
-#run system checks
-sfc /scannow 
-DISM.exe /Online /Cleanup-image /scanhealth 
-DISM.exe /Online /Cleanup-image /Restorehealth
 
